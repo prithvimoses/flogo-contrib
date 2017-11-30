@@ -1,0 +1,39 @@
+{
+  "name": "BME280Trigger",
+  "type": "flogo:trigger",
+  "ref": "github.com/philippegabert/flogo-contrib/trigger/BME280",
+  "version": "0.0.1",
+  "title": "BME280 Custom Trigger",
+  "description": "Stream data from BME280 sensor",
+  "homepage": "https://github.com/philippegabert/flogo-contrib/tree/master/trigger/BME280",
+  "author": "Philippe GABERT <pgabert@tibco.com>",
+  "settings":[
+    {
+      "name": "delay_ms",
+      "type": "integer",
+      "value": "500"
+    }
+  ],
+  "output": [
+    {
+      "name": "Temperature",
+      "type": "number"
+    },
+    {
+      "name": "Pressure",
+      "type": "number"
+    },
+    {
+      "name": "Humidity",
+      "type": "number"
+    }
+  ],
+  "handler": {
+    "settings": [
+      {
+        "name": "handler_setting",
+        "type": "string"
+      }
+    ]
+  }
+}
