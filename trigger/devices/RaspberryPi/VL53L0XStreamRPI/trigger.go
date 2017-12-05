@@ -66,16 +66,17 @@ func doEvery(d time.Duration, f func()) {
 // Init implements trigger.Trigger.Init
 func (t *VL53L0XTrigger) Init(runner action.Runner) {
 	t.runner = runner
-
+	
 	if t.config.Settings == nil {
 		log.Infof("No configuration set for the trigger... Using default configuration...")
+	} else {
+		if t.config.Settings["delay_ms"] != nil && t.config.Settings["delay_ms"] != "" {
+			interval, _ = strconv.Atoi(t.config.GetSetting("delay_ms"))
+		} else {
+			log.Infof("No delay has been set. Using default value (", interval, "ms)")
+		}
 	}
 
-	if _, ok := t.config.Settings["delay_ms"]; !ok {
-		log.Infof("No delay has been set. Using default value (", interval, "ms)")
-	} else {
-		interval, _ = strconv.Atoi(t.config.GetSetting("delay_ms"))
-	}
 
 	log.Infof("In init, id: '%s', Metadata: '%+v', Config: '%+v'", t.config.Id, t.metadata, t.config)
 }
