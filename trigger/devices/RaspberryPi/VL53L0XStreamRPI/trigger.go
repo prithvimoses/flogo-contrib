@@ -1,14 +1,14 @@
 package VL53L0XStreamRPI
 
 import (
-	"encoding/binary"
-	"errors"
 	"github.com/TIBCOSoftware/flogo-lib/core/action"
 	"github.com/TIBCOSoftware/flogo-lib/core/trigger"
 	"github.com/TIBCOSoftware/flogo-lib/logger"
+	"context"
+	"encoding/binary"
+	"errors"
 	"github.com/kidoman/embd"
 	_ "github.com/kidoman/embd/host/all"
-	"os"
 	"strconv"
 	"time"
 )
@@ -113,7 +113,7 @@ func (t *VL53L0XTrigger) scheduleRepeating(endpoint *trigger.HandlerConfig) {
 	fn2 := func() {
 		act := action.Get(endpoint.ActionId)
 
-		distance, err := t.getDataFromSensor(endpoint)
+		distance, err := getDataFromSensor(endpoint)
 		if err != nil {
 			log.Error("Error while reading sensor data. Err: ", err.Error())
 		}
@@ -174,7 +174,6 @@ func (t *VL530LXTrigger) getDataFromSensor(endpoint *trigger.HandlerConfig) (dis
 	}
 
 	distance := bus.Measure()
-	err = b.Init()
 
 	return distance, err
 }
