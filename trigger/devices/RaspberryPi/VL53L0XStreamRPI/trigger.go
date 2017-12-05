@@ -116,7 +116,7 @@ func NewDriver(bus embd.I2CBus) *VL530LXDriver {
 }
 
 // Measure measures the distance detected by the driver.
-func (d *VL530LXDriver) Measure() int {
+func (d *VL530LXDriver) Measure() (distance int , err error) {
 	byteA, err := d.bus.ReadByteFromReg(d.address, 0x1E)
 	if err != nil {
 		log.Error(err)
@@ -128,16 +128,16 @@ func (d *VL530LXDriver) Measure() int {
 
 	d.bus.WriteByteToReg(d.address, 0x00, 0x01)
 
-	result := int(binary.BigEndian.Uint16([]byte{byteA, byteB}))
+	distance = int(binary.BigEndian.Uint16([]byte{byteA, byteB}))
 
-	return result
+	return distance, err
 }
 
-func (t *VL530LXTrigger) getDataFromSensor(endpoint *trigger.HandlerConfig) (distance int, err error) {
+func (t *VL53L0XTrigger) getDataFromSensor(endpoint *trigger.HandlerConfig) (distance int, err error) {
 
 	bus := NewDriver(embd.NewI2CBus(1))
 
-	distance := bus.Measure()
+	distance, err = bus.Measure()
 
 	return distance, err
 }
@@ -149,11 +149,13 @@ func (t *VL53L0XTrigger) scheduleRepeating(endpoint *trigger.HandlerConfig) {
 	fn2 := func() {
 		act := action.Get(endpoint.ActionId)
 
-		distance, err := getDataFromSensor(endpoint)
+		data := make(map[string]interface{})
+
+		distance, err := t.getDataFromSensor(endpoint)
 		if err != nil {
 			log.Error("Error while reading sensor data. Err: ", err.Error())
 		}
-
+		data["Distance"] = distance
 		log.Debug("Distance: ", distance, "mm")
 		startAttrs, err := t.metadata.OutputsToAttrs(data, true)
 
