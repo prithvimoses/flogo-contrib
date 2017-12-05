@@ -40,6 +40,13 @@ type VL53L0XFactory struct {
 	metadata *trigger.Metadata
 }
 
+// VL53L0XTrigger is a stub for your Trigger implementation
+type VL53L0XTrigger struct {
+	metadata *trigger.Metadata
+	runner   action.Runner
+	config   *trigger.Config
+}
+
 //NewFactory create a new Trigger factory
 func NewFactory(md *trigger.Metadata) trigger.Factory {
 	return &VL53L0XFactory{metadata: md}
@@ -48,13 +55,6 @@ func NewFactory(md *trigger.Metadata) trigger.Factory {
 //New Creates a new trigger instance for a given id
 func (t *VL53L0XFactory) New(config *trigger.Config) trigger.Trigger {
 	return &VL53L0XTrigger{metadata: t.metadata, config: config}
-}
-
-// VL53L0XTrigger is a stub for your Trigger implementation
-type VL53L0XTrigger struct {
-	metadata *trigger.Metadata
-	runner   action.Runner
-	config   *trigger.Config
 }
 
 func doEvery(d time.Duration, f func()) {
@@ -106,6 +106,42 @@ func (t *VL53L0XTrigger) Stop() error {
 	return nil
 }
 
+func NewDriver(bus embd.I2CBus) *VL530LXDriver {
+	d := &VL530LXDriver{
+		bus:     bus,
+		address: VL53L0XAddress,
+	}
+
+	return d
+}
+
+// Measure measures the distance detected by the driver.
+func (d *VL530LXDriver) Measure() int {
+	byteA, err := d.bus.ReadByteFromReg(d.address, 0x1E)
+	if err != nil {
+		log.Error(err)
+	}
+	byteB, err := d.bus.ReadByteFromReg(d.address, 0x1F)
+	if err != nil {
+		log.Error(err)
+	}
+
+	d.bus.WriteByteToReg(d.address, 0x00, 0x01)
+
+	result := int(binary.BigEndian.Uint16([]byte{byteA, byteB}))
+
+	return result
+}
+
+func (t *VL530LXTrigger) getDataFromSensor(endpoint *trigger.HandlerConfig) (distance int, err error) {
+
+	bus := NewDriver(embd.NewI2CBus(1))
+
+	distance := bus.Measure()
+
+	return distance, err
+}
+
 func (t *VL53L0XTrigger) scheduleRepeating(endpoint *trigger.HandlerConfig) {
 
 	log.Debug("Repeating every ", interval, "ms")
@@ -136,44 +172,4 @@ func (t *VL53L0XTrigger) scheduleRepeating(endpoint *trigger.HandlerConfig) {
 
 	// schedule repeating
 	doEvery(time.Duration(interval)*time.Millisecond, fn2)
-}
-
-func NewDriver(bus embd.I2CBus) *VL530LXDriver {
-	d := &VL530LXDriver{
-		bus:     bus,
-		address: VL53L0XAddress,
-	}
-
-	return d
-}
-
-// Measure measures the distance detected by the driver.
-func (d *VL530LXDriver) Measure() int {
-	byteA, err := d.bus.ReadByteFromReg(d.address, 0x1E)
-	if err != nil {
-		log.Error(err)
-	}
-	//        log.Info(d.bus.ReadByteFromReg(d.address, 0x26))
-	byteB, err := d.bus.ReadByteFromReg(d.address, 0x1F)
-	if err != nil {
-		log.Error(err)
-	}
-
-	d.bus.WriteByteToReg(d.address, 0x00, 0x01)
-
-	result := int(binary.BigEndian.Uint16([]byte{byteA, byteB}))
-
-	return result
-}
-
-func (t *VL530LXTrigger) getDataFromSensor(endpoint *trigger.HandlerConfig) (distance int, err error) {
-
-	bus, err := NewDriver(embd.NewI2CBus(1))
-	if err != nil {
-		panic(err)
-	}
-
-	distance := bus.Measure()
-
-	return distance, err
 }
