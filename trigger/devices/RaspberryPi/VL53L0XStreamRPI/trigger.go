@@ -1,4 +1,4 @@
-package VL53L0XStreamRPI
+package vl53l0xstreamrpi
 
 import (
 	"github.com/TIBCOSoftware/flogo-lib/core/action"
@@ -8,7 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/kidoman/embd"
-	_ "github.com/kidoman/embd/host/all"
+	_ "github.com/kidoman/embd/host/rpi"
 	"strconv"
 	"time"
 )
@@ -45,6 +45,7 @@ type VL53L0XTrigger struct {
 	metadata *trigger.Metadata
 	runner   action.Runner
 	config   *trigger.Config
+	driver *VL530LXDriver
 }
 
 //NewFactory create a new Trigger factory
@@ -77,7 +78,8 @@ func (t *VL53L0XTrigger) Init(runner action.Runner) {
 		}
 	}
 
-
+	t.driver = NewDriver(embd.NewI2CBus(1))
+	
 	log.Infof("In init, id: '%s', Metadata: '%+v', Config: '%+v'", t.config.Id, t.metadata, t.config)
 }
 
@@ -112,12 +114,14 @@ func NewDriver(bus embd.I2CBus) *VL530LXDriver {
 		bus:     bus,
 		address: VL53L0XAddress,
 	}
-
+	d.bus.WriteByteToReg(d.address, 0x00, 0x02)
+	
 	return d
 }
 
 // Measure measures the distance detected by the driver.
 func (d *VL530LXDriver) Measure() (distance int , err error) {
+
 	byteA, err := d.bus.ReadByteFromReg(d.address, 0x1E)
 	if err != nil {
 		log.Error(err)
@@ -126,27 +130,20 @@ func (d *VL530LXDriver) Measure() (distance int , err error) {
 	if err != nil {
 		log.Error(err)
 	}
-
-	d.bus.WriteByteToReg(d.address, 0x00, 0x01)
-
+	
 	distance = int(binary.BigEndian.Uint16([]byte{byteA, byteB}))
 
 	return distance, err
 }
 
 func (t *VL53L0XTrigger) getDataFromSensor(endpoint *trigger.HandlerConfig) (distance int, err error) {
-
-	bus := NewDriver(embd.NewI2CBus(1))
-
-	distance, err = bus.Measure()
-
+	distance, err = t.driver.Measure()
 	return distance, err
 }
 
 func (t *VL53L0XTrigger) scheduleRepeating(endpoint *trigger.HandlerConfig) {
 
 	log.Debug("Repeating every ", interval, "ms")
-
 	fn2 := func() {
 		act := action.Get(endpoint.ActionId)
 
